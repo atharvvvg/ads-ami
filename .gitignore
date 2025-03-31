@@ -1,0 +1,6 @@
+ads/dataset_ami/test.xlsx
+ads/confusion_matrix.png
+ads/transformer_training_history.png
+ads/test.py
+
+venv/
