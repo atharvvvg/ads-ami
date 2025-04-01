@@ -4,3 +4,11 @@ ads/transformer_training_history.png
 ads/test.py
 
 venv/
+
+containernet/
+openflow/
+
+sdn_topology/__pycache__/*
+sdn_topology/flow_logs
+
+__pycache__

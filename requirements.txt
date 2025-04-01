@@ -7,9 +7,10 @@ matplotlib>=3.5.0
 seaborn>=0.11.0
 
 # SDN and network simulation dependencies
-mininet>=2.3.0
-ryu>=4.34
-containernet>=2.0.0
-scapy>=2.4.5
-networkx>=2.8.0
-pyflowchart>=0.2.0
+mininet
+scapy
+networkx
+pyflowchart
+dnspython==2.1.0
+eventlet==0.25.2
+ryu

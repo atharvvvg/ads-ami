@@ -1,0 +1,12 @@
+#to activate venv-
+source ~/.pyenv/versions/myenv-3.9.0/bin/activate
+
+#clear mininet environment
+sudo mn -c
+
+#run code
+sudo $(which python3) run_ami_sdn.py
+
+
+cmd = ['/home/atharv/.pyenv/versions/3.9.0/envs/myenv-3.9.0/bin/ryu-manager', controller_path, '--verbose']
+cmd = ['/home/atharv/.pyenv/versions/3.9.0/envs/myenv-3.9.0/bin/python', topology_path]

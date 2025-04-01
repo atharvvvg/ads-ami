@@ -21,7 +21,7 @@ def start_ryu_controller():
                                  'sdn_topology', 'ami_controller.py')
     
     # Start Ryu controller as a subprocess
-    cmd = ['ryu-manager', controller_path, '--verbose']
+    cmd = ['/home/atharv/.pyenv/versions/3.9.0/envs/myenv-3.9.0/bin/ryu-manager', controller_path, '--verbose']
     controller_process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     
     # Wait for controller to initialize
@@ -37,7 +37,7 @@ def start_network_topology():
                                'sdn_topology', 'ami_topology.py')
     
     # Start topology as a subprocess
-    cmd = ['python', topology_path]
+    cmd = ['/home/atharv/.pyenv/versions/3.9.0/envs/myenv-3.9.0/bin/python', topology_path]
     topology_process = subprocess.Popen(cmd)
     
     return topology_process
