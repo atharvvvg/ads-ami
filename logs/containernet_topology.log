@@ -1,0 +1,36 @@
+*** Creating network
+*** Adding controller
+*** Adding switches (AMI Gateways)
+*** Adding hosts (Houses) using Docker containers
+h1_1: kwargs {'ip': '10.0.0.1/24', 'dpid': 's1', 'cpu_shares': 20, 'mem_limit': '128m'}
+Traceback (most recent call last):
+  File "/home/atharv/.pyenv/versions/3.9.0/envs/myenv-3.9.0/lib/python3.9/site-packages/docker/api/client.py", line 275, in _raise_for_status
+    response.raise_for_status()
+  File "/home/atharv/.pyenv/versions/3.9.0/envs/myenv-3.9.0/lib/python3.9/site-packages/requests/models.py", line 1024, in raise_for_status
+    raise HTTPError(http_error_msg, response=self)
+requests.exceptions.HTTPError: 409 Client Error: Conflict for url: http+docker://localhost/v1.48/containers/create?name=mn.h1_1
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/atharv/Desktop/ads-ami/sdn_topology/ami_topology.py", line 92, in <module>
+    create_topology()
+  File "/home/atharv/Desktop/ads-ami/sdn_topology/ami_topology.py", line 54, in create_topology
+    h1_1 = net.addDocker('h1_1', ip='10.0.0.1/24', dpid='s1', **dargs)
+  File "/home/atharv/.pyenv/versions/3.9.0/envs/myenv-3.9.0/lib/python3.9/site-packages/mininet/net.py", line 1082, in addDocker
+    return self.addHost( name, cls=cls, **params)
+  File "/home/atharv/.pyenv/versions/3.9.0/envs/myenv-3.9.0/lib/python3.9/site-packages/mininet/net.py", line 254, in addHost
+    h = cls( name, **defaults )
+  File "/home/atharv/.pyenv/versions/3.9.0/envs/myenv-3.9.0/lib/python3.9/site-packages/mininet/node.py", line 868, in __init__
+    self.dc = self.dcli.create_container(
+  File "/home/atharv/.pyenv/versions/3.9.0/envs/myenv-3.9.0/lib/python3.9/site-packages/docker/api/container.py", line 440, in create_container
+    return self.create_container_from_config(config, name, platform)
+  File "/home/atharv/.pyenv/versions/3.9.0/envs/myenv-3.9.0/lib/python3.9/site-packages/docker/api/container.py", line 457, in create_container_from_config
+    return self._result(res, True)
+  File "/home/atharv/.pyenv/versions/3.9.0/envs/myenv-3.9.0/lib/python3.9/site-packages/docker/api/client.py", line 281, in _result
+    self._raise_for_status(response)
+  File "/home/atharv/.pyenv/versions/3.9.0/envs/myenv-3.9.0/lib/python3.9/site-packages/docker/api/client.py", line 277, in _raise_for_status
+    raise create_api_error_from_http_exception(e) from e
+  File "/home/atharv/.pyenv/versions/3.9.0/envs/myenv-3.9.0/lib/python3.9/site-packages/docker/errors.py", line 39, in create_api_error_from_http_exception
+    raise cls(e, response=response, explanation=explanation) from e
+docker.errors.APIError: 409 Client Error for http+docker://localhost/v1.48/containers/create?name=mn.h1_1: Conflict ("Conflict. The container name "/mn.h1_1" is already in use by container "fdb11bcb83fa8d9ad6b8d71c415861f814c5954f0b8d5c60d482534b6535cfe4". You have to remove (or rename) that container to be able to reuse that name.")

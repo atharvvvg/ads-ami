@@ -1,16 +1,15 @@
 # Core dependencies
-tensorflow>=2.10.0
+
 numpy>=1.22.0
 pandas>=1.4.0
 scikit-learn>=1.0.0
-matplotlib>=3.5.0
-seaborn>=0.11.0
+# matplotlib>=3.5.0
+# seaborn>=0.11.0
 
 # SDN and network simulation dependencies
-mininet
-scapy
-networkx
-pyflowchart
-dnspython==2.1.0
+# mininet
 eventlet==0.25.2
-ryu
+ryu>=4.0
+requests>=2.25.0
+networkx
+scapy

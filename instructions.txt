@@ -5,6 +5,7 @@ source ~/.pyenv/versions/myenv-3.9.0/bin/activate
 sudo mn -c
 
 #run code
+sudo systemctl start openvswitch-switch
 sudo $(which python3) run_ami_sdn.py
 
 
