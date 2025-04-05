@@ -8432,3 +8432,107 @@ Received Flow Stats Reply from DPID: 0000000000000001
 Logged 0 flow entries for DPID 0000000000000001
 Received Flow Stats Reply from DPID: 0000000000000002
 Logged 0 flow entries for DPID 0000000000000002
+Sending stats request: 0000000000000001
+Sending stats request: 0000000000000002
+EVENT ofp_event->AmiSdnController EventOFPFlowStatsReply
+Received Flow Stats Reply from DPID: 0000000000000001
+Logged 0 flow entries for DPID 0000000000000001
+EVENT ofp_event->AmiSdnController EventOFPFlowStatsReply
+Received Flow Stats Reply from DPID: 0000000000000002
+Logged 0 flow entries for DPID 0000000000000002
+Sending stats request: 0000000000000001
+Sending stats request: 0000000000000002
+EVENT ofp_event->AmiSdnController EventOFPFlowStatsReply
+Received Flow Stats Reply from DPID: 0000000000000002
+Logged 0 flow entries for DPID 0000000000000002
+EVENT ofp_event->AmiSdnController EventOFPFlowStatsReply
+Received Flow Stats Reply from DPID: 0000000000000001
+Logged 0 flow entries for DPID 0000000000000001
+Sending stats request: 0000000000000001
+Sending stats request: 0000000000000002
+EVENT ofp_event->AmiSdnController EventOFPFlowStatsReply
+EVENT ofp_event->AmiSdnController EventOFPFlowStatsReply
+Received Flow Stats Reply from DPID: 0000000000000002
+Logged 0 flow entries for DPID 0000000000000002
+Received Flow Stats Reply from DPID: 0000000000000001
+Logged 0 flow entries for DPID 0000000000000001
+Sending stats request: 0000000000000001
+Sending stats request: 0000000000000002
+EVENT ofp_event->AmiSdnController EventOFPFlowStatsReply
+EVENT ofp_event->AmiSdnController EventOFPFlowStatsReply
+Received Flow Stats Reply from DPID: 0000000000000001
+Logged 0 flow entries for DPID 0000000000000001
+Received Flow Stats Reply from DPID: 0000000000000002
+Logged 0 flow entries for DPID 0000000000000002
+Sending stats request: 0000000000000001
+Sending stats request: 0000000000000002
+EVENT ofp_event->AmiSdnController EventOFPFlowStatsReply
+Received Flow Stats Reply from DPID: 0000000000000001
+Logged 0 flow entries for DPID 0000000000000001
+EVENT ofp_event->AmiSdnController EventOFPFlowStatsReply
+Received Flow Stats Reply from DPID: 0000000000000002
+Logged 0 flow entries for DPID 0000000000000002
+Sending stats request: 0000000000000001
+Sending stats request: 0000000000000002
+EVENT ofp_event->AmiSdnController EventOFPFlowStatsReply
+EVENT ofp_event->AmiSdnController EventOFPFlowStatsReply
+Received Flow Stats Reply from DPID: 0000000000000002
+Logged 0 flow entries for DPID 0000000000000002
+Received Flow Stats Reply from DPID: 0000000000000001
+Logged 0 flow entries for DPID 0000000000000001
+Sending stats request: 0000000000000001
+Sending stats request: 0000000000000002
+EVENT ofp_event->AmiSdnController EventOFPFlowStatsReply
+EVENT ofp_event->AmiSdnController EventOFPFlowStatsReply
+Received Flow Stats Reply from DPID: 0000000000000002
+Logged 0 flow entries for DPID 0000000000000002
+Received Flow Stats Reply from DPID: 0000000000000001
+Logged 0 flow entries for DPID 0000000000000001
+Sending stats request: 0000000000000001
+Sending stats request: 0000000000000002
+EVENT ofp_event->AmiSdnController EventOFPFlowStatsReply
+EVENT ofp_event->AmiSdnController EventOFPFlowStatsReply
+Received Flow Stats Reply from DPID: 0000000000000001
+Logged 0 flow entries for DPID 0000000000000001
+Received Flow Stats Reply from DPID: 0000000000000002
+Logged 0 flow entries for DPID 0000000000000002
+Sending stats request: 0000000000000001
+Sending stats request: 0000000000000002
+EVENT ofp_event->AmiSdnController EventOFPFlowStatsReply
+EVENT ofp_event->AmiSdnController EventOFPFlowStatsReply
+Received Flow Stats Reply from DPID: 0000000000000002
+Logged 0 flow entries for DPID 0000000000000002
+Received Flow Stats Reply from DPID: 0000000000000001
+Logged 0 flow entries for DPID 0000000000000001
+Sending stats request: 0000000000000001
+Sending stats request: 0000000000000002
+EVENT ofp_event->AmiSdnController EventOFPFlowStatsReply
+Received Flow Stats Reply from DPID: 0000000000000001
+Logged 0 flow entries for DPID 0000000000000001
+EVENT ofp_event->AmiSdnController EventOFPFlowStatsReply
+Received Flow Stats Reply from DPID: 0000000000000002
+Logged 0 flow entries for DPID 0000000000000002
+Sending stats request: 0000000000000001
+Sending stats request: 0000000000000002
+EVENT ofp_event->AmiSdnController EventOFPFlowStatsReply
+Received Flow Stats Reply from DPID: 0000000000000001
+Logged 0 flow entries for DPID 0000000000000001
+EVENT ofp_event->AmiSdnController EventOFPFlowStatsReply
+Received Flow Stats Reply from DPID: 0000000000000002
+Logged 0 flow entries for DPID 0000000000000002
+Sending stats request: 0000000000000001
+Sending stats request: 0000000000000002
+EVENT ofp_event->AmiSdnController EventOFPFlowStatsReply
+Received Flow Stats Reply from DPID: 0000000000000001
+Logged 0 flow entries for DPID 0000000000000001
+EVENT ofp_event->AmiSdnController EventOFPFlowStatsReply
+Received Flow Stats Reply from DPID: 0000000000000002
+Logged 0 flow entries for DPID 0000000000000002
+Sending stats request: 0000000000000001
+Sending stats request: 0000000000000002
+EVENT ofp_event->AmiSdnController EventOFPFlowStatsReply
+EVENT ofp_event->AmiSdnController EventOFPFlowStatsReply
+Received Flow Stats Reply from DPID: 0000000000000002
+Logged 0 flow entries for DPID 0000000000000002
+Received Flow Stats Reply from DPID: 0000000000000001
+Logged 0 flow entries for DPID 0000000000000001

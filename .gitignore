@@ -12,6 +12,6 @@ sdn_topology/__pycache__/*
 
 __pycache__
 
-logs/
+logs
 
 flow_stats.log
