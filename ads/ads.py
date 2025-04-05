@@ -510,7 +510,7 @@ def main():
 
 
     # Load and preprocess data
-    file_path = 'dataset_ami/test.csv' # Make sure this path is correct
+    file_path = 'ads/dataset_ami/test.csv' # Make sure this path is correct
     print(f"\nLoading data from {file_path}...")
 
     try:

@@ -4,10 +4,30 @@ source ~/.pyenv/versions/myenv-3.9.0/bin/activate
 #clear mininet environment
 sudo mn -c
 
+# if getting docker container already running
+docker ps -a
+docker system prune -a
+
 #run code
 sudo systemctl start openvswitch-switch
-sudo $(which python3) run_ami_sdn.py
+sudo python3 run_ami_sdn.py
 
 
 cmd = ['/home/atharv/.pyenv/versions/3.9.0/envs/myenv-3.9.0/bin/ryu-manager', controller_path, '--verbose']
 cmd = ['/home/atharv/.pyenv/versions/3.9.0/envs/myenv-3.9.0/bin/python', topology_path]
+
+
+#to test connection
+## Generate Normal Traffic:
+sudo docker exec -it mn.h2_2 ping -c 5 10.0.0.2
+
+## Mimic Anomalous Traffic
+### Port Scanning (using nmap):
+sudo docker exec -it mn.h1_1 apt-get update
+sudo docker exec -it mn.h1_1 apt-get install -y nmap
+sudo docker exec -it mn.h1_1 nmap -Pn -sS -p 1-1024 10.0.0.3
+
+### Denial of Service - SYN Flood (using hping3):
+sudo docker exec -it mn.h1_1 apt-get update
+sudo docker exec -it mn.h1_1 apt-get install -y hping3
+sudo docker exec -it mn.h1_1 hping3 --flood --syn -p 80 10.0.0.3 (STOP THIS COMMAND AFTER 5 SECONDS)

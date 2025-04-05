@@ -4,7 +4,7 @@ Defines the AMI Smart Grid topology using Containernet.
 
 Topology:
     - Remote Ryu Controller
-    - 2 Switches (AMI Gateways)
+    - 2 Switches (AMI Gateways) - NOW LINKED TOGETHER
     - 4 Docker Hosts (Houses), 2 connected to each switch.
 """
 
@@ -67,9 +67,10 @@ def create_topology():
     net.addLink(h2_1, s2, cls=TCLink, bw=10)
     net.addLink(h2_2, s2, cls=TCLink, bw=10)
 
-    # Link the AMI gateways (switches) together (optional, depends on desired routing)
-    # If AMI gateways need to communicate directly or route between houses on different gateways
-    # net.addLink(s1, s2, cls=TCLink, bw=100)
+    # Link the AMI gateways (switches) together
+    # *** THIS LINE IS NOW UNCOMMENTED ***
+    info('*** Linking switches s1 and s2\n')
+    net.addLink(s1, s2, cls=TCLink, bw=100)
 
     info('*** Starting network\n')
     net.build()

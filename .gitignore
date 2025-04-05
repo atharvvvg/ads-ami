@@ -1,7 +1,7 @@
-ads/dataset_ami/test.xlsx
-ads/confusion_matrix.png
-ads/transformer_training_history.png
-ads/test.py
+ads/dataset_ami/test.csv
+ads/encoder.joblib
+ads/scaler.joblib
+ads/target_encoder.joblib
 
 venv/
 
@@ -9,6 +9,9 @@ containernet/
 openflow/
 
 sdn_topology/__pycache__/*
-sdn_topology/flow_logs
 
 __pycache__
+
+logs/
+
+flow_stats.log
