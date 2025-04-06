@@ -22,12 +22,28 @@ cmd = ['/home/atharv/.pyenv/versions/3.9.0/envs/myenv-3.9.0/bin/python', topolog
 sudo docker exec -it mn.h2_2 ping -c 5 10.0.0.2
 
 ## Mimic Anomalous Traffic
-### Port Scanning (using nmap):
+### Port Scanning (using nmap): NORMAL TRAFFIC
 sudo docker exec -it mn.h1_1 apt-get update
 sudo docker exec -it mn.h1_1 apt-get install -y nmap
 sudo docker exec -it mn.h1_1 nmap -Pn -sS -p 1-1024 10.0.0.3
 
-### Denial of Service - SYN Flood (using hping3):
+### Denial of Service - SYN Flood (using hping3): # XSS
 sudo docker exec -it mn.h1_1 apt-get update
 sudo docker exec -it mn.h1_1 apt-get install -y hping3
 sudo docker exec -it mn.h1_1 hping3 --flood --syn -p 80 10.0.0.3 (STOP THIS COMMAND AFTER 5 SECONDS)
+OR
+sudo ping -f 10.0.0.4
+
+
+### prepare bash
+sudo docker exec -it mn.h1_2 bash
+apt-get update
+apt-get install -y iputils-ping net-tools nmap hping3 netcat
+apt update && apt install -y dnsutils curl wget build-essential python3 python3-pip
+
+### PASSWORD attack (in bash)
+sudo hping3 --syn -p 80 --flood --rand-source 10.0.0.3
+
+### DDOS (in bash)
+sudo docker exec -it mn.h1_2 bash
+sudo hping3 --udp -p 53 --flood --rand-source -d 1000 10.0.0.3

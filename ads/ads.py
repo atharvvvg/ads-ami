@@ -7,12 +7,12 @@ from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from sklearn.metrics import precision_recall_fscore_support, roc_auc_score, confusion_matrix
 from sklearn.metrics import precision_score, recall_score, f1_score, classification_report
 import tensorflow as tf
-from tensorflow.keras.layers import Input, Dense, MultiHeadAttention, LayerNormalization, Dropout # type: ignore
-from tensorflow.keras.models import Model # type: ignore
+from tensorflow.keras.layers import Input, Dense, MultiHeadAttention, LayerNormalization, Dropout
+from tensorflow.keras.models import Model
 import time
 import warnings
-import os # Added for directory creation
-import joblib # Added for saving objects
+import joblib # Import joblib for saving/loading sklearn objects
+import os     # Import os for creating directories
 
 warnings.filterwarnings('ignore')
 
@@ -37,8 +37,11 @@ def load_and_preprocess_data(file_path):
     ]
 
     # Try to detect the file format
-    with open(file_path, 'r') as f:
-        first_line = f.readline().strip()
+    try:
+        with open(file_path, 'r') as f:
+            first_line = f.readline().strip()
+    except FileNotFoundError:
+        raise # Re-raise the error if the file doesn't exist
 
     # Count separators to determine the likely separator
     tab_count = first_line.count('\t')
@@ -57,37 +60,28 @@ def load_and_preprocess_data(file_path):
     try:
         # First attempt: Try reading with the detected separator
         if has_header:
-            df = pd.read_csv(file_path, sep=separator, header=0, low_memory=False) # Added low_memory=False
+            df = pd.read_csv(file_path, sep=separator, header=0)
             print("Reading file with header row")
         else:
-            df = pd.read_csv(file_path, sep=separator, names=column_names, header=None, low_memory=False)
+            df = pd.read_csv(file_path, sep=separator, names=column_names, header=None)
             print("Reading file without header row")
-
-        # Assign column names if they weren't read from header
-        if not has_header and len(df.columns) == len(column_names):
-             df.columns = column_names
-        elif len(df.columns) != len(column_names):
-             print(f"Warning: Column count mismatch. Expected {len(column_names)}, got {len(df.columns)}. Attempting to align...")
-             # Try to align based on common names or just use first N names
-             df.columns = column_names[:len(df.columns)]
-
 
         # Check if we got the expected number of columns
         if len(df.columns) < len(column_names) - 5:  # Allow for some flexibility
             print(f"Warning: Expected around {len(column_names)} columns but got {len(df.columns)}. Trying alternative parsing...")
 
             # Second attempt: Try reading the file as a single text column and then split
-            df_raw = pd.read_csv(file_path, header=None, names=['raw_data'])
+            df = pd.read_csv(file_path, header=None, names=['raw_data'])
 
-            # Split the raw data into columns using the detected separator
-            split_data = df_raw['raw_data'].str.split(separator, expand=True)
+            # Split the raw data into columns
+            split_data = df['raw_data'].str.split(',', expand=True)
 
             # Assign column names (up to the number of columns we have)
             num_cols = min(len(column_names), split_data.shape[1])
             split_data.columns = column_names[:num_cols]
 
             df = split_data
-            print(f"Parsed data into {df.shape[1]} columns using alternative method.")
+            print(f"Parsed data into {df.shape[1]} columns")
 
     except Exception as e:
         print(f"Error reading CSV: {str(e)}")
@@ -101,18 +95,16 @@ def load_and_preprocess_data(file_path):
                     continue  # Skip header
 
                 # Split the line and create a row
-                values = line.strip().split(',') # Assuming comma as fallback
+                values = line.strip().split(',')
                 rows.append(values)
 
         # Create DataFrame
         df = pd.DataFrame(rows)
-        num_parsed_cols = df.shape[1]
-        if num_parsed_cols >= len(column_names):
-            df.columns = column_names[:num_parsed_cols] # Use actual number of parsed columns
+        if len(df.columns) >= len(column_names):
+            df.columns = column_names[:len(df.columns)]
         else:
             # Pad with NaN columns if needed
-            df.columns = column_names[:num_parsed_cols] # Name existing columns
-            for i in range(num_parsed_cols, len(column_names)):
+            for i in range(len(df.columns), len(column_names)):
                 df[column_names[i]] = np.nan
 
         print(f"Manually parsed {len(df)} rows into {len(df.columns)} columns")
@@ -121,7 +113,6 @@ def load_and_preprocess_data(file_path):
     print("First 2 rows of the dataset:")
     print(df.head(2))
 
-    # --- Data Cleaning and Feature Engineering ---
     # Convert timestamp to datetime and extract features
     try:
         df['ts'] = pd.to_numeric(df['ts'], errors='coerce')
@@ -133,9 +124,9 @@ def load_and_preprocess_data(file_path):
             print(f"Warning: {nat_count} invalid timestamp values found and converted to NaT")
 
         # Extract time features where timestamp is valid
-        df['hour'] = df['ts'].dt.hour.fillna(0).astype(int)
-        df['day'] = df['ts'].dt.day.fillna(0).astype(int)
-        df['day_of_week'] = df['ts'].dt.dayofweek.fillna(0).astype(int)
+        df['hour'] = df['ts'].dt.hour
+        df['day'] = df['ts'].dt.day
+        df['day_of_week'] = df['ts'].dt.dayofweek
     except Exception as e:
         print(f"Error processing timestamps: {str(e)}")
         # Create dummy time features if timestamp processing fails
@@ -144,66 +135,49 @@ def load_and_preprocess_data(file_path):
         df['day_of_week'] = 0
 
     # Extract IP features (convert IPs to numerical representations)
-    def ip_to_int(ip_str):
-        try:
-            if isinstance(ip_str, str) and '.' in ip_str:
-                parts = ip_str.strip().strip("'\"").split('.')
-                if len(parts) == 4:
-                    return int(''.join([part.zfill(3) for part in parts]))
-            return 0
-        except:
-            return 0
-
     try:
-        df['src_ip_parsed'] = df['src_ip'].apply(ip_to_int)
-        df['dst_ip_parsed'] = df['dst_ip'].apply(ip_to_int)
+        df['src_ip_parsed'] = df['src_ip'].apply(lambda x: int(''.join([i.zfill(3) for i in str(x).split('.')]) if isinstance(x, str) and '.' in str(x) else 0))
+        df['dst_ip_parsed'] = df['dst_ip'].apply(lambda x: int(''.join([i.zfill(3) for i in str(x).split('.')]) if isinstance(x, str) and '.' in str(x) else 0))
     except Exception as e:
         print(f"Error processing IP addresses: {str(e)}")
         df['src_ip_parsed'] = 0
         df['dst_ip_parsed'] = 0
 
-    # Handle missing values and types
-    # Identify numeric and categorical columns based on original definition
-    categorical_cols_def = ['proto', 'service', 'conn_state', 'dns_query', 'ssl_version',
+    # Handle missing values
+    # Identify numeric and categorical columns
+    categorical_cols = ['proto', 'service', 'conn_state', 'dns_query', 'ssl_version',
                         'ssl_cipher', 'ssl_subject', 'ssl_issuer', 'http_method',
                         'http_uri', 'http_referrer', 'http_version', 'http_user_agent',
                         'http_orig_mime_types', 'http_resp_mime_types', 'weird_name',
                         'weird_addl']
 
+    # Convert boolean-like columns to integers
     boolean_cols = ['dns_AA', 'dns_RD', 'dns_RA', 'dns_rejected', 'ssl_resumed',
                     'ssl_established', 'weird_notice']
-
-    # Convert boolean-like columns to integers first
     for col in boolean_cols:
         if col in df.columns:
-            df[col] = df[col].apply(lambda x: 1 if str(x).strip().lower() in ['t', 'true', '1'] else 0)
-        else:
-            print(f"Warning: Boolean column '{col}' not found. Skipping.")
+            # Handle potential boolean values directly and coerce others
+            df[col] = df[col].apply(lambda x: 1 if str(x).lower() in ['t', 'true', '1'] else 0)
 
 
-    # Fill missing values and ensure correct types
+    # Fill missing values
     for col in df.columns:
-        if col in categorical_cols_def:
-            df[col] = df[col].fillna('-').astype(str) # Ensure string type
-        elif col in boolean_cols:
-             df[col] = df[col].fillna(0).astype(int) # Already converted, ensure int
-        elif col not in ['ts', 'src_ip', 'dst_ip', 'label', 'type', 'hour', 'day', 'day_of_week', 'src_ip_parsed', 'dst_ip_parsed']:
-            # Convert other columns to numeric, fillna with 0
+        if col in categorical_cols:
+            # Ensure string type before filling NA, then fill NA
+            df[col] = df[col].astype(str).fillna('-')
+        elif col not in ['ts', 'src_ip', 'dst_ip', 'label', 'type']:
+             # Ensure numeric conversion, filling errors and NaNs with 0
             df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
 
-    # Convert label to numeric if it's not already
-    if 'label' in df.columns:
-        df['label'] = pd.to_numeric(df['label'], errors='coerce').fillna(0).astype(int)
-    else:
-         print("Warning: 'label' column not found. Creating dummy label column.")
-         df['label'] = 0
 
+    # Convert label to numeric if it's not already
+    df['label'] = pd.to_numeric(df['label'], errors='coerce').fillna(0).astype(int) # Ensure integer type
 
     # Ensure 'type' column has string values
     if 'type' in df.columns:
         df['type'] = df['type'].fillna('normal').astype(str)
         # If all values are NaN or empty, assign a default value
-        if df['type'].str.strip().eq('').all() or df['type'].str.strip().eq('nan').all():
+        if df['type'].str.strip().eq('').all() or df['type'].str.strip().str.lower().eq('nan').all():
             print("Warning: 'type' column contains only empty or NaN values. Assigning default value 'normal'.")
             df['type'] = 'normal'
     else:
@@ -211,85 +185,86 @@ def load_and_preprocess_data(file_path):
         df['type'] = 'normal'
 
     # Extract features and target
-    # Drop original timestamp and IP strings, plus label/type
+    # Make sure to drop columns only if they exist
     cols_to_drop = [col for col in ['ts', 'src_ip', 'dst_ip', 'label', 'type'] if col in df.columns]
     X = df.drop(columns=cols_to_drop, errors='ignore')
 
-    y_num = df['label']  # Numerical label
-    y_cat = df['type']   # Categorical label
+    y_num = df['label'] if 'label' in df.columns else None # Numerical label
+    y_cat = df['type'] if 'type' in df.columns else None # Categorical label
 
-    print(f"Shape of feature set X before preprocessing: {X.shape}")
-    print(f"Columns in X: {X.columns.tolist()}")
+    if y_cat is None:
+        raise ValueError("Target column 'type' could not be found or generated.")
 
     return X, y_num, y_cat, df
 
-def preprocess_features(X, y_cat, scaler=None, encoder=None, target_encoder=None):
-    """Preprocess features for the model. Fits or transforms based on provided objects."""
-    print(f"Preprocessing features for {'fitting' if scaler is None else 'transforming'}...")
-    # Separate numerical and categorical features based on dtypes in the current DataFrame X
-    categorical_cols = X.select_dtypes(include=['object']).columns.tolist()
-    numerical_cols = X.select_dtypes(include=['int64', 'float64', 'int32']).columns.tolist() # Include int32
+def preprocess_features(X, y_cat, train_indices=None):
+    """Preprocess features for the model."""
+    # Separate numerical and categorical features
+    categorical_cols = X.select_dtypes(include=['object', 'category']).columns # Include category type
+    numerical_cols = X.select_dtypes(include=np.number).columns # Use numpy number types
 
-    print(f"Identified Numerical Columns ({len(numerical_cols)}): {numerical_cols}")
-    print(f"Identified Categorical Columns ({len(categorical_cols)}): {categorical_cols}")
+    print(f"Identified {len(numerical_cols)} numerical columns and {len(categorical_cols)} categorical columns.")
 
-
-    if scaler is None: # Fitting mode (training data)
-        # --- Initialize and Fit Scaler ---
+    # Initialize encoders
+    if train_indices is None:
+        print("-" * 30)
+        print("Features used for SCALING (Training):")
+        print(list(numerical_cols)) # Print the list
+        print(f"Total: {len(numerical_cols)}")
+        print("-" * 30)
+        print("Features used for ENCODING (Training):")
+        print(list(categorical_cols)) # Print the list
+        print(f"Total: {len(categorical_cols)}")
+        print("-" * 30)
+        # First time preprocessing (training data)
+        print("Fitting scaler and encoders on training data.")
         scaler = StandardScaler()
-        print("Fitting StandardScaler...")
-        X_num = scaler.fit_transform(X[numerical_cols])
-        print("StandardScaler fitted.")
-
-        # --- Initialize and Fit OneHotEncoder ---
+        # Use handle_unknown='ignore' for robustness, sparse_output=False for dense array
         encoder = OneHotEncoder(sparse_output=False, handle_unknown='ignore')
-        print("Fitting OneHotEncoder for features...")
-        X_cat = encoder.fit_transform(X[categorical_cols])
-        print("OneHotEncoder for features fitted.")
 
-        # --- Initialize and Fit Target Encoder ---
-        target_encoder = OneHotEncoder(sparse_output=False, handle_unknown='ignore') # Use ignore for target too? Or raise error?
-        print("Fitting OneHotEncoder for target...")
+        # Fit and transform numerical features
+        X_num = scaler.fit_transform(X[numerical_cols])
+        print(f"Scaled numerical features shape: {X_num.shape}")
+
+        # Fit and transform categorical features
+        if not categorical_cols.empty:
+            X_cat = encoder.fit_transform(X[categorical_cols])
+            print(f"Encoded categorical features shape: {X_cat.shape}")
+        else:
+            X_cat = np.empty((X.shape[0], 0)) # Create empty array if no categorical features
+            print("No categorical features found to encode.")
+
+
+        # Also encode the target
+        target_encoder = OneHotEncoder(sparse_output=False)
         y_encoded = target_encoder.fit_transform(y_cat.values.reshape(-1, 1))
-        print("OneHotEncoder for target fitted.")
-        print(f"Target classes found: {target_encoder.categories_[0]}")
+        print(f"Encoded target variable shape: {y_encoded.shape}")
+        print(f"Target classes found by encoder: {target_encoder.categories_}")
+
 
         return X_num, X_cat, scaler, encoder, target_encoder, y_encoded
+    else:
+        # Using pre-fitted encoders (validation/test data)
+        print("Transforming validation/test data using fitted scaler and encoders.")
+        scaler, encoder, target_encoder = train_indices
 
-    else: # Transforming mode (validation/test data)
-        # --- Transform using existing scaler ---
-        print("Transforming numerical features using loaded StandardScaler...")
-        try:
-             X_num = scaler.transform(X[numerical_cols])
-        except ValueError as e:
-             print(f"ERROR transforming numerical features: {e}")
-             print("Ensure numerical columns match those used for fitting scaler.")
-             print("Columns provided:", numerical_cols)
-             if hasattr(scaler, 'feature_names_in_'): print("Scaler expected:", scaler.feature_names_in_)
-             raise e # Re-raise error
+        # Transform numerical features
+        X_num = scaler.transform(X[numerical_cols])
 
-        # --- Transform using existing encoder ---
-        print("Transforming categorical features using loaded OneHotEncoder...")
-        try:
-             X_cat = encoder.transform(X[categorical_cols])
-        except ValueError as e:
-             print(f"ERROR transforming categorical features: {e}")
-             print("Ensure categorical columns match those used for fitting encoder.")
-             print("Columns provided:", categorical_cols)
-             if hasattr(encoder, 'feature_names_in_'): print("Encoder expected:", encoder.feature_names_in_)
-             raise e # Re-raise error
+        # Transform categorical features
+        if not categorical_cols.empty:
+             # Check if encoder was fitted (i.e., if there were categorical cols in training)
+            if hasattr(encoder, 'categories_') and encoder.categories_:
+                X_cat = encoder.transform(X[categorical_cols])
+            else: # If no encoder was fitted during training
+                X_cat = np.empty((X.shape[0], 0))
+        else:
+            X_cat = np.empty((X.shape[0], 0))
 
-        # --- Transform target using existing target encoder ---
-        print("Transforming target labels using loaded OneHotEncoder...")
-        try:
-            y_encoded = target_encoder.transform(y_cat.values.reshape(-1, 1))
-        except ValueError as e:
-             print(f"ERROR transforming target labels: {e}")
-             print("Ensure target labels contain values known by the fitted target encoder.")
-             raise e
+        # Also encode the target
+        y_encoded = target_encoder.transform(y_cat.values.reshape(-1, 1))
 
         return X_num, X_cat, y_encoded
-
 
 def transformer_block(inputs, head_size, num_heads, ff_dim, dropout=0):
     """Create a transformer block."""
@@ -303,8 +278,8 @@ def transformer_block(inputs, head_size, num_heads, ff_dim, dropout=0):
 
     # Feed-forward network
     ff_output = Dense(ff_dim, activation="relu")(x)
-    ff_output = Dropout(dropout)(ff_output) # Added dropout here too
     ff_output = Dense(inputs.shape[-1])(ff_output) # Project back to input dim
+    ff_output = Dropout(dropout)(ff_output) # Apply dropout after FF
 
     # Add & normalize (second residual connection)
     return LayerNormalization(epsilon=1e-6)(x + ff_output)
@@ -319,8 +294,9 @@ def build_transformer_model(input_shape, num_classes, head_size=256, num_heads=4
     for _ in range(num_transformer_blocks):
         x = transformer_block(x, head_size, num_heads, ff_dim, dropout)
 
-    # Global average pooling
-    x = tf.keras.layers.GlobalAveragePooling1D(data_format='channels_first')(x) # Use channels_first if shape is (batch, seq, features)
+    # Global average pooling - applies pooling across the sequence dimension
+    # Result shape: (batch_size, features)
+    x = tf.keras.layers.GlobalAveragePooling1D(data_format="channels_last")(x)
 
     # MLP for classification
     for dim in mlp_units:
@@ -334,14 +310,20 @@ def build_transformer_model(input_shape, num_classes, head_size=256, num_heads=4
 def prepare_data_for_transformer(X_num, X_cat):
     """Prepare data for the transformer model."""
     # Combine numerical and categorical features
-    X_combined = np.hstack([X_num, X_cat])
+    if X_cat.size > 0: # Check if X_cat is not empty
+        X_combined = np.hstack([X_num, X_cat])
+    else:
+        X_combined = X_num # Only use numerical if no categorical
 
-    # Reshape for transformer: (batch_size, sequence_length=1, features)
+    # Reshape for transformer: (batch_size, sequence_length, features)
+    # For tabular data, we treat the combined features as a single time step in a sequence.
+    # Sequence length is 1, number of features is X_combined.shape[1]
     X_reshaped = X_combined.reshape(X_combined.shape[0], 1, X_combined.shape[1])
+    print(f"Reshaped data for transformer: {X_reshaped.shape}")
 
     return X_reshaped
 
-def train_model(model, X_train, y_train, X_val, y_val, epochs=20, batch_size=64, model_save_path='ads/saved_transformer_model.h5'):
+def train_model(model, X_train, y_train, X_val, y_val, output_dir, epochs=20, batch_size=64):
     """Train the transformer model."""
     # Early stopping to prevent overfitting
     early_stopping = tf.keras.callbacks.EarlyStopping(
@@ -349,9 +331,12 @@ def train_model(model, X_train, y_train, X_val, y_val, epochs=20, batch_size=64,
     )
 
     # Model checkpoint to save the best model
+    model_checkpoint_path = os.path.join(output_dir, 'saved_transformer_model.h5')
     model_checkpoint = tf.keras.callbacks.ModelCheckpoint(
-        model_save_path, monitor='val_loss', save_best_only=True, verbose=1
+        model_checkpoint_path, monitor='val_loss', save_best_only=True, verbose=1
     )
+    print(f"Model checkpoints will be saved to: {model_checkpoint_path}")
+
 
     # Train the model
     start_time = time.time()
@@ -366,13 +351,13 @@ def train_model(model, X_train, y_train, X_val, y_val, epochs=20, batch_size=64,
 
     return model, history, training_time
 
-def evaluate_model(model, X_test, y_test, y_test_cat, target_encoder):
+def evaluate_model(model, X_test, y_test, y_test_cat, target_encoder, output_dir):
     """Evaluate the model performance."""
     # Predict on test data
     start_time = time.time()
     y_pred_proba = model.predict(X_test)
     detection_time = time.time() - start_time
-    avg_detection_time = detection_time / len(X_test)
+    avg_detection_time = detection_time / len(X_test) if len(X_test) > 0 else 0
 
     y_pred = np.argmax(y_pred_proba, axis=1)
     y_test_indices = np.argmax(y_test, axis=1)
@@ -408,30 +393,26 @@ def evaluate_model(model, X_test, y_test, y_test_cat, target_encoder):
     # --- AUC-ROC ---
     try:
         if len(np.unique(y_test_indices)) > 1 and y_test.shape[1] > 1:
-             # Ensure y_test_proba matches shape requirements if needed
+             # Ensure y_pred_proba matches shape requirements if needed
              if y_pred_proba.shape[1] != y_test.shape[1]:
-                 print(f"Warning: Mismatch between prediction probability shape {y_pred_proba.shape} and test label shape {y_test.shape}. Adjusting probabilities.")
-                 # Create a zero array with the target shape
+                 print(f"Warning: Mismatch between prediction probability shape {y_pred_proba.shape} and test label shape {y_test.shape}. AUC might be inaccurate.")
+                 # Pad prediction probabilities if needed (common issue if some classes are never predicted)
                  temp_proba = np.zeros_like(y_test, dtype=float)
-                 # Find common columns based on number of classes predicted vs actual
-                 common_cols = min(y_pred_proba.shape[1], y_test.shape[1])
-                 # Assign probabilities for common columns
-                 temp_proba[:, :common_cols] = y_pred_proba[:, :common_cols]
+                 max_pred_idx = y_pred_proba.shape[1]
+                 cols_to_use = min(max_pred_idx, y_test.shape[1])
+                 temp_proba[:,:cols_to_use] = y_pred_proba[:,:cols_to_use]
                  y_pred_proba_adjusted = temp_proba
-                 auc_roc = roc_auc_score(y_test, y_pred_proba_adjusted, multi_class='ovr', average='weighted')
-
+                 auc_roc = roc_auc_score(y_test, y_pred_proba_adjusted, multi_class='ovr')
              else:
-                auc_roc = roc_auc_score(y_test, y_pred_proba, multi_class='ovr', average='weighted')
+                auc_roc = roc_auc_score(y_test, y_pred_proba, multi_class='ovr')
 
-        elif len(np.unique(y_test_indices)) > 1 and y_test.shape[1] == 1: # Binary case encoded as single column? Unlikely with OHE
-             print("Warning: Binary classification detected with OHE target? AUC calculation might be incorrect.")
-             auc_roc = roc_auc_score(y_test_indices, y_pred_proba[:, 1]) # Assume index 1 is positive class
+        elif len(np.unique(y_test_indices)) > 1 and y_test.shape[1] == 1: # Binary case encoded as single column (unlikely with OneHotEncoder)
+             auc_roc = roc_auc_score(y_test_indices, y_pred_proba[:, 1]) # Assuming positive class is index 1
         else:
             print("Warning: Only one class found in y_test_indices or y_test shape issue. AUC-ROC calculation skipped.")
             auc_roc = float('nan')
     except ValueError as e:
          print(f"Warning: ValueError calculating AUC-ROC: {str(e)}. Setting AUC-ROC to NaN.")
-         # Example: "Only one class present in y_true. ROC AUC score is not defined in that case."
          auc_roc = float('nan')
     except Exception as e:
         print(f"Warning: Generic error calculating AUC-ROC: {str(e)}. Setting AUC-ROC to NaN.")
@@ -439,32 +420,40 @@ def evaluate_model(model, X_test, y_test, y_test_cat, target_encoder):
 
 
     # --- Confusion Matrix ---
-    cm = confusion_matrix(y_test_indices, y_pred)
+    cm = confusion_matrix(y_test_indices, y_pred, labels=range(len(class_names))) # Ensure labels match expected range
     print("\nConfusion Matrix:")
     # Plotting the confusion matrix for better visualization
-    plt.figure(figsize=(10, 8)) # Adjusted size
+    plt.figure(figsize=(10, 8)) # Adjusted size slightly
     sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=class_names, yticklabels=class_names)
     plt.xlabel('Predicted Label')
     plt.ylabel('True Label')
     plt.title('Confusion Matrix')
-    plt.xticks(rotation=45, ha='right') # Rotate labels if long
+    plt.xticks(rotation=45, ha='right') # Rotate labels if they overlap
     plt.yticks(rotation=0)
     plt.tight_layout()
-    plt.savefig('ads/confusion_matrix.png') # Save in ads directory
-    print("Confusion Matrix saved as 'ads/confusion_matrix.png'")
-    # plt.show() # Optional: show plot immediately
+    cm_path = os.path.join(output_dir, 'confusion_matrix.png')
+    plt.savefig(cm_path)
+    print(f"Confusion Matrix saved as '{cm_path}'")
+    plt.close() # Close the plot
 
     # --- False Alarm Rate (FAR) ---
     # Calculated as the rate at which 'normal' instances are misclassified as 'attack'
-    # FAR = False Positives for Attack / Total Actual Normal = 1 - Recall of Normal Class
+    # FAR = False Positives for Attack Classes / Total Actual Normal = 1 - Recall of Normal Class
     try:
-        normal_class_name = 'normal' # Make sure this matches the name in your dataset/encoder
-        if normal_class_name in report:
-            recall_normal = report[normal_class_name]['recall']
-            false_alarm_rate = 1.0 - recall_normal
+        # Find the index corresponding to the 'normal' class
+        normal_class_name = 'normal' # Assuming this is the name
+        if normal_class_name in class_names:
+            normal_class_metrics = report.get(normal_class_name, None)
+            if normal_class_metrics:
+                recall_normal = normal_class_metrics['recall']
+                false_alarm_rate = 1.0 - recall_normal
+            else:
+                 print(f"Warning: Metrics for '{normal_class_name}' class not found in report. Cannot calculate FAR.")
+                 false_alarm_rate = float('nan')
         else:
-            print(f"Warning: '{normal_class_name}' class not found in classification report. Cannot calculate FAR.")
+            print(f"Warning: '{normal_class_name}' class not found in target encoder categories. Cannot calculate FAR.")
             false_alarm_rate = float('nan')
+
     except Exception as e:
          print(f"Warning: Error calculating FAR: {str(e)}")
          false_alarm_rate = float('nan')
@@ -496,22 +485,15 @@ def evaluate_model(model, X_test, y_test, y_test_cat, target_encoder):
 
 def main():
     """Main function to execute the anomaly detection pipeline."""
-    # Define paths for saving objects
-    ads_dir = 'ads'
-    scaler_path = os.path.join(ads_dir, 'scaler.joblib')
-    encoder_path = os.path.join(ads_dir, 'encoder.joblib')
-    target_encoder_path = os.path.join(ads_dir, 'target_encoder.joblib')
-    model_save_path = os.path.join(ads_dir, 'saved_transformer_model.h5')
-    history_plot_path = os.path.join(ads_dir, 'transformer_training_history.png')
-
-    # Ensure the 'ads' directory exists
-    os.makedirs(ads_dir, exist_ok=True)
-    print(f"Ensured directory '{ads_dir}' exists.")
-
-
-    # Load and preprocess data
+    # Define input file path and output directory
     file_path = 'ads/dataset_ami/test.csv' # Make sure this path is correct
-    print(f"\nLoading data from {file_path}...")
+    output_dir = 'ads/results'
+
+    # Create the output directory if it doesn't exist
+    os.makedirs(output_dir, exist_ok=True)
+    print(f"Ensured output directory exists: {output_dir}")
+
+    print(f"Loading data from {file_path}...")
 
     try:
         X, y_num, y_cat, df = load_and_preprocess_data(file_path)
@@ -534,25 +516,28 @@ def main():
             return # Stop execution if only one class
 
         # --- Undersampling ---
-        # NOTE: Undersampling significantly reduces dataset size to balance classes.
-        print("\nPerforming undersampling to balance classes...")
+        print("\nPerforming undersampling to balance classes (heuristic: target ~3x smallest)...")
         if len(attack_types) > 1:
             min_class_count = class_counts.min()
-            # Cap larger classes at a multiple of the smallest, e.g., 3x or 5x
-            undersample_multiplier = 3
-            target_sample_size = min_class_count * undersample_multiplier
-            print(f"Smallest class count: {min_class_count}. Aiming for max {target_sample_size} samples for larger classes.")
+            # Target sample size: aim for 3x the minority count for larger classes, but don't upsample minority
+            target_sample_size_heuristic = min_class_count * 3
+            print(f"Smallest class count: {min_class_count}. Aiming for samples around {target_sample_size_heuristic} for larger classes.")
 
             balanced_df_list = []
             for attack_type in attack_types:
                 class_df = df[df['type'] == attack_type].copy()
-                if len(class_df) > target_sample_size :
-                    sampled_df = class_df.sample(n=target_sample_size, random_state=42)
+                current_count = len(class_df)
+
+                # Only undersample if the class is larger than the heuristic target size
+                # AND significantly larger than the minimum count (to avoid over-sampling tiny majority classes)
+                if current_count > target_sample_size_heuristic and current_count > min_class_count :
+                    # Undersample to the heuristic size
+                    sampled_df = class_df.sample(n=target_sample_size_heuristic, random_state=42)
                     balanced_df_list.append(sampled_df)
-                    print(f"Undersampled '{attack_type}' from {len(class_df)} to {len(sampled_df)}")
+                    print(f"Undersampled '{attack_type}' from {current_count} to {len(sampled_df)}")
                 else:
                     balanced_df_list.append(class_df)
-                    print(f"Kept all {len(class_df)} samples for '{attack_type}'")
+                    print(f"Kept all {current_count} samples for '{attack_type}'")
 
             balanced_df = pd.concat(balanced_df_list)
 
@@ -560,6 +545,7 @@ def main():
             df = balanced_df.sample(frac=1, random_state=42).reset_index(drop=True) # Shuffle the balanced dataset
 
             # Update X, y_num, y_cat after balancing
+            # Ensure all original columns exist before dropping
             cols_to_drop = [col for col in ['ts', 'src_ip', 'dst_ip', 'label', 'type'] if col in df.columns]
             X = df.drop(columns=cols_to_drop, errors='ignore')
             y_num = df['label'] if 'label' in df.columns else None
@@ -570,61 +556,98 @@ def main():
             updated_counts = y_cat.value_counts()
             for cls, count in updated_counts.items():
                 print(f"{cls}: {count} samples ({count/len(y_cat)*100:.2f}%)")
+        else:
+            print("Skipping undersampling as there are not enough classes.")
+
 
         # Use stratified split to maintain class distribution in train/val/test
         print("\nPerforming stratified train/validation/test split...")
-        try:
-            X_train, X_temp, y_cat_train, y_cat_temp = train_test_split(
-                X, y_cat, test_size=0.3, random_state=42, stratify=y_cat
-            )
-
-            X_val, X_test, y_cat_val, y_cat_test = train_test_split(
-                X_temp, y_cat_temp, test_size=0.5, random_state=42, stratify=y_cat_temp # 0.5 of 0.3 = 0.15 test
-            )
-        except ValueError as e:
-             print(f"\nERROR during stratified split: {e}")
-             print("This usually happens if a class has only 1 sample after balancing.")
-             print("Consider adjusting undersampling or using the full dataset.")
+        # Check if dataset size is too small for the split ratios
+        if len(X) < 10: # Arbitrary small number check
+             print("ERROR: Dataset too small for reliable train/val/test split after potential undersampling.")
              return
+
+        # Ensure there are enough samples in the smallest class for stratification
+        min_samples_per_class = y_cat.value_counts().min()
+        required_samples_for_split = 2 # At least 1 for train, 1 for temp set
+
+        # Adjust test_size if needed for stratification (especially relevant after undersampling)
+        test_size_main = 0.3
+        test_size_sub = 0.5 # for val/test split from temp
+        if min_samples_per_class < required_samples_for_split / (1 - test_size_main):
+            print(f"Warning: Smallest class ({min_samples_per_class} samples) might be too small for 30% test split stratification. Adjusting split if necessary or consider larger dataset/different balancing.")
+            # Could potentially reduce test_size or handle differently, but for now proceed with warning.
+
+        X_train, X_temp, y_cat_train, y_cat_temp = train_test_split(
+            X, y_cat, test_size=test_size_main, random_state=42, stratify=y_cat
+        )
+
+        # Check if temp set is large enough for the next split
+        min_samples_temp = y_cat_temp.value_counts().min()
+        if min_samples_temp < required_samples_for_split:
+             print(f"Warning: Smallest class in temporary set ({min_samples_temp} samples) is too small for 50% validation/test split stratification. Test set might be very small or lack some classes.")
+             # Adjust sub-split if needed, e.g., use smaller test_size_sub or pool smallest classes if appropriate
+             if len(X_temp) > 1: # Need at least 2 samples to split
+                 X_val, X_test, y_cat_val, y_cat_test = train_test_split(
+                     X_temp, y_cat_temp, test_size=test_size_sub, random_state=42, stratify=y_cat_temp
+                 )
+             else:
+                 print("ERROR: Cannot split temporary set further due to insufficient samples.")
+                 # Handle this case: maybe use temp set as validation only?
+                 X_val, y_cat_val = X_temp, y_cat_temp
+                 X_test, y_cat_test = pd.DataFrame(), pd.Series(dtype=str) # Empty test set
+                 print("Using entire temporary set as validation, test set will be empty.")
+
+        else:
+            X_val, X_test, y_cat_val, y_cat_test = train_test_split(
+                X_temp, y_cat_temp, test_size=test_size_sub, random_state=42, stratify=y_cat_temp
+            )
 
 
         print(f"Train set: {X_train.shape}, Validation set: {X_val.shape}, Test set: {X_test.shape}")
 
         # Verify class distribution in splits
-        print("\nClass distribution in train set:")
+        print("\nClass distribution in train set (%):")
         train_counts = y_cat_train.value_counts(normalize=True) * 100
         print(train_counts.round(2))
 
-        print("\nClass distribution in test set:")
-        test_counts = y_cat_test.value_counts(normalize=True) * 100
-        print(test_counts.round(2))
+        print("\nClass distribution in validation set (%):")
+        val_counts = y_cat_val.value_counts(normalize=True) * 100
+        print(val_counts.round(2))
 
-        # Preprocess features - Fit on Training data
-        print("\nPreprocessing features (fitting on training data)...")
+        if not X_test.empty:
+            print("\nClass distribution in test set (%):")
+            test_counts = y_cat_test.value_counts(normalize=True) * 100
+            print(test_counts.round(2))
+        else:
+            print("\nTest set is empty.")
+            return # Cannot proceed without a test set
+
+        # Preprocess features and save scalers/encoders
+        print("\nPreprocessing features...")
         X_num_train, X_cat_train, scaler, encoder, target_encoder, y_train_encoded = preprocess_features(X_train, y_cat_train)
 
-        # --- Save preprocessing objects ---
-        try:
-            print(f"\nSaving fitted scaler to {scaler_path}")
-            joblib.dump(scaler, scaler_path)
+        # Save the fitted scaler and encoders
+        scaler_path = os.path.join(output_dir, 'scaler.joblib')
+        encoder_path = os.path.join(output_dir, 'encoder.joblib')
+        target_encoder_path = os.path.join(output_dir, 'target_encoder.joblib')
 
-            print(f"Saving fitted encoder to {encoder_path}")
+        joblib.dump(scaler, scaler_path)
+        print(f"Saved scaler to {scaler_path}")
+         # Check if encoder was actually fitted (i.e., categorical features existed)
+        if hasattr(encoder, 'categories_') and encoder.categories_:
             joblib.dump(encoder, encoder_path)
+            print(f"Saved feature encoder to {encoder_path}")
+        else:
+            print("No feature encoder fitted (no categorical columns in training data), skipping save.")
 
-            print(f"Saving fitted target encoder to {target_encoder_path}")
-            joblib.dump(target_encoder, target_encoder_path)
-            print("Preprocessing objects saved successfully.")
-        except Exception as e:
-            print(f"ERROR saving preprocessing objects: {e}")
-            # Optionally, decide whether to continue training without saving
-            # return # Or raise an error
+        joblib.dump(target_encoder, target_encoder_path)
+        print(f"Saved target encoder to {target_encoder_path}")
 
-        # Preprocess Validation and Test data - Transform only
-        print("\nPreprocessing features (transforming validation data)...")
-        X_num_val, X_cat_val, y_val_encoded = preprocess_features(X_val, y_cat_val, scaler, encoder, target_encoder)
-        print("\nPreprocessing features (transforming test data)...")
-        X_num_test, X_cat_test, y_test_encoded = preprocess_features(X_test, y_cat_test, scaler, encoder, target_encoder)
 
+        # Preprocess validation and test sets using the *fitted* objects
+        X_num_val, X_cat_val, y_val_encoded = preprocess_features(X_val, y_cat_val, (scaler, encoder, target_encoder))
+        X_num_test, X_cat_test, y_test_encoded = preprocess_features(X_test, y_cat_test, (scaler, encoder, target_encoder))
 
         # Prepare data for transformer
         print("\nPreparing data for transformer model...")
@@ -636,106 +659,120 @@ def main():
         print("\nBuilding and compiling the transformer model...")
         input_shape = X_train_transformer.shape[1:] # Should be (1, num_features)
         num_classes = y_train_encoded.shape[1]
+        print(f"Model input shape: {input_shape}, Number of output classes: {num_classes}")
+
 
         # Hyperparameters - Adjusted based on the potentially smaller dataset
         model = build_transformer_model(
             input_shape=input_shape,
             num_classes=num_classes,
             head_size=64,   # Reduced head size
-            num_heads=4,    # Reduced num heads
-            ff_dim=128,     # Reduced feed-forward dimension
-            num_transformer_blocks=2, # Reduced blocks
-            mlp_units=[64], # Simplified MLP
-            dropout=0.1,    # Reduced dropout
-            mlp_dropout=0.2 # Reduced MLP dropout
+            num_heads=2,    # Reduced number of heads
+            ff_dim=128,     # Feed-forward dimension
+            num_transformer_blocks=2, # Reduced number of blocks
+            mlp_units=[64], # Simplified MLP head
+            dropout=0.1,    # Slightly reduced dropout
+            mlp_dropout=0.2 # Slightly reduced MLP dropout
         )
 
         # Print model summary
         model.summary()
 
         model.compile(
-            optimizer=tf.keras.optimizers.Adam(learning_rate=1e-4), # Reduced learning rate
+            optimizer=tf.keras.optimizers.Adam(learning_rate=1e-3),
             loss='categorical_crossentropy',
             metrics=['accuracy']
         )
 
         # Train the model
         print("\nTraining the model...")
-        # Note: Training runs for 'epochs' unless 'EarlyStopping' triggers sooner based on 'val_loss' improvement.
         model, history, training_time = train_model(
             model, X_train_transformer, y_train_encoded,
             X_val_transformer, y_val_encoded,
+            output_dir=output_dir, # Pass output directory for checkpoint saving
             epochs=25,      # Increased epochs slightly, let early stopping decide
-            batch_size=32,   # Adjusted batch size
-            model_save_path=model_save_path # Pass save path
+            batch_size=32   # Slightly larger batch size if memory allows
         )
 
         # Load the best model saved by ModelCheckpoint for evaluation
         print("\nLoading best model weights from checkpoint...")
+        model_load_path = os.path.join(output_dir, 'saved_transformer_model.h5')
         try:
-            # Ensure model is built before loading weights if loading into a fresh instance
-            # model = build_transformer_model(...) # Rebuild if necessary
-            # model.compile(...) # Recompile if necessary
-            model.load_weights(model_save_path)
+            # Only load weights if the file exists
+            if os.path.exists(model_load_path):
+                model.load_weights(model_load_path)
+                print(f"Successfully loaded best weights from {model_load_path}")
+            else:
+                 print(f"Warning: Checkpoint file '{model_load_path}' not found. Using the model state from the end of training.")
         except Exception as e:
-            print(f"Warning: Could not load weights from '{model_save_path}'. Using the model state from the end of training. Error: {e}")
+            print(f"Warning: Could not load weights from '{model_load_path}'. Using the model state from the end of training. Error: {e}")
 
 
         # Evaluate the model
         print("\nEvaluating the model on the test set...")
-        metrics = evaluate_model(model, X_test_transformer, y_test_encoded, y_cat_test, target_encoder) # Pass target_encoder
+        metrics = evaluate_model(model, X_test_transformer, y_test_encoded, y_cat_test, target_encoder, output_dir) # Pass target_encoder and output_dir
 
         # Print results
         print("\n--- Evaluation Results ---")
         print(f"Overall Precision (Weighted): {metrics['precision']:.4f}")
         print(f"Overall Recall (Weighted): {metrics['recall']:.4f}")
         print(f"Overall F1 Score (Weighted): {metrics['f1']:.4f}")
-        print(f"AUC-ROC (One-vs-Rest, Weighted): {metrics['auc_roc']:.4f}")
-        print(f"False Alarm Rate (Normal Misclassified as Attack): {metrics['false_alarm_rate']:.4f}")
+        print(f"AUC-ROC (One-vs-Rest): {metrics['auc_roc']:.4f}")
+        print(f"False Alarm Rate (Normal Misclassified): {metrics['false_alarm_rate']:.4f}")
         print(f"Average Detection Time per Sample: {metrics['avg_detection_time']*1000:.2f} ms")
         print(f"Total Training Time: {training_time:.2f} seconds")
 
         print("\n--- Metrics Per Class ---")
         # Find max length for alignment
-        max_len = max(len(k) for k in metrics['attack_metrics'].keys()) if metrics['attack_metrics'] else 10
-        print(f"{'Attack Type'.ljust(max_len)} | Count | Precision | Recall | F1-Score")
-        print("-" * (max_len + 36))
+        max_len = max(len(k) for k in metrics['attack_metrics'].keys()) if metrics['attack_metrics'] else 10 # Default length
+        header = f"{'Attack Type'.ljust(max_len)} | {'Count'.rjust(7)} | {'Precision'.rjust(9)} | {'Recall'.rjust(6)} | {'F1-Score'.rjust(8)}"
+        print(header)
+        print("-" * len(header))
         for attack_type, attack_metric in metrics['attack_metrics'].items():
-             print(f"{attack_type.ljust(max_len)} | {str(attack_metric['count']).rjust(5)} | {attack_metric['precision']:9.4f} | {attack_metric['recall']:6.4f} | {attack_metric['f1']:8.4f}")
+             print(f"{attack_type.ljust(max_len)} | {str(attack_metric['count']).rjust(7)} | {attack_metric['precision']:9.4f} | {attack_metric['recall']:6.4f} | {attack_metric['f1']:8.4f}")
 
 
         # Plot training history
-        print("\nGenerating training history plots...")
-        plt.figure(figsize=(12, 5))
+        if history is not None:
+            print("\nGenerating training history plots...")
+            plt.figure(figsize=(12, 5))
 
-        plt.subplot(1, 2, 1)
-        plt.plot(history.history['loss'], label='Training Loss')
-        plt.plot(history.history['val_loss'], label='Validation Loss')
-        plt.title('Model Loss')
-        plt.xlabel('Epoch')
-        plt.ylabel('Loss')
-        plt.legend()
-        plt.grid(True)
+            plt.subplot(1, 2, 1)
+            plt.plot(history.history['loss'], label='Training Loss')
+            plt.plot(history.history['val_loss'], label='Validation Loss')
+            plt.title('Model Loss')
+            plt.xlabel('Epoch')
+            plt.ylabel('Loss')
+            plt.legend()
+            plt.grid(True)
 
-        plt.subplot(1, 2, 2)
-        plt.plot(history.history['accuracy'], label='Training Accuracy')
-        plt.plot(history.history['val_accuracy'], label='Validation Accuracy')
-        plt.title('Model Accuracy')
-        plt.xlabel('Epoch')
-        plt.ylabel('Accuracy')
-        plt.legend()
-        plt.grid(True)
+            plt.subplot(1, 2, 2)
+            plt.plot(history.history['accuracy'], label='Training Accuracy')
+            plt.plot(history.history['val_accuracy'], label='Validation Accuracy')
+            plt.title('Model Accuracy')
+            plt.xlabel('Epoch')
+            plt.ylabel('Accuracy')
+            plt.legend()
+            plt.grid(True)
 
-        plt.tight_layout()
-        plt.savefig(history_plot_path)
-        print(f"Plot saved as '{history_plot_path}'")
-        # plt.show() # Optional
+            plt.tight_layout()
+            history_plot_path = os.path.join(output_dir, 'transformer_training_history.png')
+            plt.savefig(history_plot_path)
+            print(f"Plot saved as '{history_plot_path}'")
+            plt.close() # Close the plot
+        else:
+             print("\nSkipping training history plot generation as training did not complete successfully.")
+
 
     except FileNotFoundError:
         print(f"ERROR: Dataset file not found at {file_path}")
     except KeyError as e:
         print(f"ERROR: Missing expected column in the dataset: {e}")
-        print("Please ensure the CSV file has the correct columns and format.")
+        print("Please ensure the CSV file has the correct columns and format, or adjust column names in the script.")
+    except ValueError as e:
+        print(f"ERROR: A data-related value error occurred: {e}")
+        import traceback
+        traceback.print_exc()
     except Exception as e:
         print(f"An unexpected error occurred: {str(e)}")
         import traceback

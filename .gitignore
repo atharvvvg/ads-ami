@@ -1,17 +1,13 @@
-ads/dataset_ami/test.csv
-ads/encoder.joblib
-ads/scaler.joblib
-ads/target_encoder.joblib
-
 venv/
+
+ads/dataset_ami/test.csv
+sdn_topology/__pycache__/*
 
 containernet/
 openflow/
 
-sdn_topology/__pycache__/*
-
 __pycache__
 
 logs
-
 flow_stats.log
+prompt.txt
