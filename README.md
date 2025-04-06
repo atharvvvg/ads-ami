@@ -109,7 +109,7 @@ Follow these steps carefully to set up the project environment.
 **3. Clone Repository:**
 
 ```bash
-git clone <your-repository-url>
+git clone <repository-url>
 cd ADS-AMI
 ```
 
