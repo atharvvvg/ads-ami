@@ -34,7 +34,7 @@ The system simulates an AMI environment using Containernet, monitors network flo
     │   │   ├── target_encoder.joblib
     │   │   └── transformer_training_history.png
     │   └── ads.py               # Model training script
-    ├── containernet/            # (Potentially containernet library files if included)
+    ├── containernet/            # Containernet library files
     ├── logs/                    # Runtime logs from components
     │   ├── anomaly_detector.log
     │   ├── containernet_topology.log
@@ -46,9 +46,7 @@ The system simulates an AMI environment using Containernet, monitors network flo
     ├── .gitignore
     ├── anomaly_detector.py      # Real-time detection script
     ├── flow_stats.log           # Log file from Ryu controller
-    ├── instructions.txt         # (Your instruction notes)
-    ├── prompt.txt               # (Your prompt notes)
-    ├── README.md                # This file
+    ├── README.md                
     ├── requirements.txt         # Python dependencies
     └── run_ami_sdn.py           # Main script to start simulation
     ```
@@ -63,7 +61,7 @@ Follow these steps carefully to set up the project environment.
 **1. Prerequisites:**
 
 *   **Operating System:** Linux (Ubuntu recommended, as Mininet/Ryu work best here).
-*   **Python:** Python 3.8+ (Your usage suggests Python 3.9 via `pyenv`).
+*   **Python:** Python 3.9
 *   **Pyenv (Optional but recommended):** For managing Python versions. [pyenv installation](https://github.com/pyenv/pyenv#installation)
 *   **Mininet & Containernet:** Install Mininet and its Docker-based extension Containernet.
     ```bash
@@ -123,23 +121,23 @@ pip install -r requirements.txt
     
 **5. Prepare Dataset:**
 
-*    Place your training dataset (subset of TON_IoT) named test.csv inside the ads/dataset_ami/ directory. Ensure it has the expected columns as defined in ads/ads.py.
+*    Place your training dataset (subset of TON_IoT) named test.csv inside the ```ads/dataset_ami/``` directory. Ensure it has the expected columns as defined in ```ads/ads.py```.
 
 **6. Train the Anomaly Detection Model:**
 
-*    Run the training script. This will process the dataset, train the Transformer model, and save the model (.h5), scaler (.joblib), encoders (.joblib), and plots (.png) into the ads/results/ directory.
+*    Run the training script. This will process the dataset, train the Transformer model, and save the model (```.h5```), scaler (```.joblib```), encoders (```.joblib```), and plots (```.png```) into the ```ads/results/``` directory.
 
 ```bash
 python ads/ads.py
 ```
 
-*    Important: Ensure the ads/results/ directory and its contents (saved_transformer_model.h5, scaler.joblib, etc.) are present before running the simulation.
+*    Important: Ensure the ```ads/results/``` directory and its contents (saved_transformer_model.h5, scaler.joblib, etc.) are present before running the simulation.
 
 **7. Verify/Update Hardcoded Paths:**
 
-*    CRITICAL: The run_ami_sdn.py script contains hardcoded paths for the Ryu manager and Python executables based on your specific pyenv setup.
+*    CRITICAL: The ```run_ami_sdn.py``` script contains hardcoded paths for the Ryu manager and Python executables based on your specific pyenv setup.
 
-*    Open run_ami_sdn.py and verify/update the following variables to match your system's paths:
+*    Open ```run_ami_sdn.py``` and verify/update the following variables to match your system's paths:
 
 ```bash
 RYU_MANAGER_CMD (== /home/atharv/.pyenv/versions/3.9.0/envs/myenv-3.9.0/bin/ryu-manager)
@@ -156,11 +154,11 @@ PYTHON_CMD (== /home/atharv/.pyenv/versions/3.9.0/envs/myenv-3.9.0/bin/python)
 * Clean unnecessary docker containers/mininet process:
 
 ```bash
-#clear mininet environment
+# clear mininet environment
 sudo mn -c
 ```
 
-```bas
+```bash
 # if getting docker container already running
 docker ps -a
 docker system prune -a
@@ -176,19 +174,19 @@ sudo python3 run_ami_sdn.py
 
 * This script will:
 
-    * Start the Ryu Controller (ami_controller.py).
+    * Start the Ryu Controller (```ami_controller.py```).
 
-    * Start the Containernet topology (ami_topology.py).
+    * Start the Containernet topology (```ami_topology.py```).
 
-    * Wait for flow_stats.log to be created.
+    * Wait for ```flow_stats.log``` to be created.
 
-    * Start the Anomaly Detector (anomaly_detector.py).
+    * Start the Anomaly Detector (```anomaly_detector.py```).
 
 **2. Monitor the System:**
 
 *    Anomaly Detections: Check the output log of the anomaly detector:
-        * Open logs/anomaly_detector.log
-            (This will show Normal traffic detected or --- ANOMALY DETECTED --- messages with the predicted type and flow details.)
+        * Open ```logs/anomaly_detector.log```
+            (This will show Normal traffic detected or ```--- ANOMALY DETECTED ---``` messages with the predicted type and flow details.)
             
             OR
             
@@ -197,7 +195,7 @@ sudo python3 run_ami_sdn.py
             ```
 
 * Raw Flow Data: View the raw flow statistics being logged by the controller:
-    * Open flow_stats.log
+    * Open ```flow_stats.log```
 
         OR
 
@@ -205,11 +203,11 @@ sudo python3 run_ami_sdn.py
         tail -f flow_stats.log
         ```
 
-* Component Logs: Check individual logs in the logs/ directory for detailed information or errors from Ryu (ryu_controller.log) and Containernet (containernet_topology.log).
+* Component Logs: Check individual logs in the ```logs/``` directory for detailed information or errors from Ryu (```ryu_controller.log```) and Containernet (```containernet_topology.log```).
 
 **3. Generating Traffic and Simulating Attacks:**
 
-* You need to execute commands inside the Docker containers representing the houses (e.g., mn.h1_1, mn.h1_2, mn.h2_1, mn.h2_2). Use
+* You need to execute commands inside the Docker containers representing the houses (e.g., ```mn.h1_1, mn.h1_2, mn.h2_1, mn.h2_2```). Use
 
         sudo docker exec -it <container_name> <command>.
 
