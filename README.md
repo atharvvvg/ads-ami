@@ -1,173 +1,286 @@
-# AMI Smart Grid SDN with Anomaly Detection
+      
+# AMI Smart Grid SDN with Transformer-based Anomaly Detection
 
-This project implements a Software-Defined Networking (SDN) solution for Advanced Metering Infrastructure (AMI) smart grids with integrated anomaly detection using a transformer-based machine learning model.
+## Description
 
-## Project Overview
+This project implements a Software-Defined Networking (SDN) solution tailored for Advanced Metering Infrastructure (AMI) in smart grids. It integrates a sophisticated anomaly detection system (ADS) utilizing a Transformer-based machine learning model to identify potential security threats within the network traffic.
 
-The system consists of three main components:
+The system simulates an AMI environment using Containernet, monitors network flows using a Ryu SDN controller, logs relevant flow statistics, and employs a trained Transformer model to classify traffic in near real-time as either normal or belonging to various attack categories.
 
-1. **Network Topology**: A Containernet-based simulation of an AMI smart grid with smart meters and houses connected to an SDN controller.
-2. **SDN Controller**: A Ryu-based controller that monitors network traffic and collects flow statistics.
-3. **Anomaly Detection System**: A transformer-based machine learning model that analyzes network flows to detect potential threats.
+## Features
 
-## System Architecture
+*   **AMI Network Simulation:** Employs Containernet (Mininet with Docker support) to simulate houses (Docker containers) and AMI gateways (OpenFlow switches).
+*   **SDN Control:** Uses a Ryu-based controller for basic L2 switching and, crucially, for periodic collection of OpenFlow flow statistics.
+*   **Flow Logging:** The Ryu controller logs essential flow details (IPs, ports, protocol, byte/packet counts, duration) to a CSV file (`flow_stats.log`).
+*   **Transformer Anomaly Detection:**
+    *   Trains a Transformer neural network model (`ads/ads.py`) on a network traffic dataset (e.g., TON_IoT) to learn patterns of normal and malicious traffic.
+    *   Includes preprocessing steps (scaling, encoding) consistent between training and detection.
+    *   Supports multi-class classification to identify different types of anomalies (e.g., DoS, DDoS, Scanning, etc., depending on the training data labels).
+*   **Real-time Monitoring:** The `anomaly_detector.py` script monitors `flow_stats.log` for new entries, preprocesses them, and uses the trained model to predict anomalies, printing detections to its log file.
 
-The architecture follows the diagram provided, with:
+## Visuals
 
-- An SDN controller at the core
-- Smart meters for each user group
-- Multiple houses connected to each smart meter
-
-The system uses the following technologies:
-
-- **Containernet**: For network simulation (extends Mininet with Docker container support)
-- **Ryu**: For SDN controller implementation
-- **TensorFlow**: For the transformer-based anomaly detection model
-- **Pandas/NumPy**: For data processing and analysis
+*   **Project Structure:**
+    ```
+    ADS-AMI/
+    ├── ads/
+    │   ├── dataset_ami/
+    │   │   └── test.csv         # Training/Evaluation Dataset
+    │   ├── results/             # Output from training
+    │   │   ├── confusion_matrix.png
+    │   │   ├── encoder.joblib
+    │   │   ├── saved_transformer_model.h5
+    │   │   ├── scaler.joblib
+    │   │   ├── target_encoder.joblib
+    │   │   └── transformer_training_history.png
+    │   └── ads.py               # Model training script
+    ├── containernet/            # (Potentially containernet library files if included)
+    ├── logs/                    # Runtime logs from components
+    │   ├── anomaly_detector.log
+    │   ├── containernet_topology.log
+    │   └── ryu_controller.log
+    ├── sdn_topology/
+    │   ├── __pycache__/
+    │   ├── ami_controller.py    # Ryu controller logic
+    │   └── ami_topology.py      # Containernet topology definition
+    ├── .gitignore
+    ├── anomaly_detector.py      # Real-time detection script
+    ├── flow_stats.log           # Log file from Ryu controller
+    ├── instructions.txt         # (Your instruction notes)
+    ├── prompt.txt               # (Your prompt notes)
+    ├── README.md                # This file
+    ├── requirements.txt         # Python dependencies
+    └── run_ami_sdn.py           # Main script to start simulation
+    ```
+*   **Training Results:** After running `ads.py`, check the `ads/results/` directory for:
+    *   `confusion_matrix.png`: Visualizes the model's classification performance.
+    *   `transformer_training_history.png`: Shows training/validation loss and accuracy over epochs.
 
 ## Installation
 
-### Prerequisites
+Follow these steps carefully to set up the project environment.
 
-- Ubuntu operating system
-- Python 3.8 or higher
-- Docker
+**1. Prerequisites:**
 
-### Setup
+*   **Operating System:** Linux (Ubuntu recommended, as Mininet/Ryu work best here).
+*   **Python:** Python 3.8+ (Your usage suggests Python 3.9 via `pyenv`).
+*   **Pyenv (Optional but recommended):** For managing Python versions. [pyenv installation](https://github.com/pyenv/pyenv#installation)
+*   **Mininet & Containernet:** Install Mininet and its Docker-based extension Containernet.
+    ```bash
+    # Install Mininet core and dependencies
+    git clone https://github.com/mininet/mininet
+    mininet/util/install.sh -a
 
-1. Clone this repository:
+    # Install Containernet (follow official instructions)
+    # Typically involves installing Docker and then Containernet
+    # See: https://containernet.github.io/#installation
+    sudo apt-get update
+    sudo apt-get install -y docker.io
+    git clone https://github.com/containernet/containernet.git
+    cd containernet
+    sudo make install
+    cd ..
+    ```
+*   **Open vSwitch:** Usually installed with Mininet. Verify installation and ensure the service is running.
+    ```bash
+    sudo ovs-vsctl --version
+    sudo systemctl status openvswitch-switch  # Check status
+    sudo systemctl start openvswitch-switch   # Start if not running
+    ```
+*   **Ryu SDN Framework:** Install the Ryu controller framework.
+    ```bash
+    # Using pip within your chosen Python environment is recommended
+    pip install ryu
+    ```
+*   **Build Essentials (for hping3 etc.):**
+    ```bash
+    sudo apt-get install -y build-essential
+    ```
 
-   ```
-   git clone <repository-url>
-   cd new_capstone
-   ```
+**2. Environment Setup:**
 
-2. Install dependencies:
+*   (If using pyenv) Activate your desired Python environment:
+    ```bash
+    # Example for my setup
+    source ~/.pyenv/versions/myenv-3.9.0/bin/activate
+    # Or create and activate a new one
+    # pyenv virtualenv 3.9.0 ami-sdn-env
+    # pyenv activate ami-sdn-env
+    ```
 
-   ```
-   pip install -r requirements.txt
-   ```
+**3. Clone Repository:**
 
-3. Install Containernet:
+```bash
+git clone <your-repository-url>
+cd ADS-AMI
+```
 
-   ```
-   git clone https://github.com/containernet/containernet.git
-   cd containernet
-   sudo ./install.sh
-   ```
+**4. Install Python Dependencies:**
 
-4. Install Ryu:
-   ```
-   pip install ryu
-   ```
+```bash  
+pip install -r requirements.txt
+```
+    
+**5. Prepare Dataset:**
+
+*    Place your training dataset (subset of TON_IoT) named test.csv inside the ads/dataset_ami/ directory. Ensure it has the expected columns as defined in ads/ads.py.
+
+**6. Train the Anomaly Detection Model:**
+
+*    Run the training script. This will process the dataset, train the Transformer model, and save the model (.h5), scaler (.joblib), encoders (.joblib), and plots (.png) into the ads/results/ directory.
+
+```bash
+python ads/ads.py
+```
+
+*    Important: Ensure the ads/results/ directory and its contents (saved_transformer_model.h5, scaler.joblib, etc.) are present before running the simulation.
+
+**7. Verify/Update Hardcoded Paths:**
+
+*    CRITICAL: The run_ami_sdn.py script contains hardcoded paths for the Ryu manager and Python executables based on your specific pyenv setup.
+
+*    Open run_ami_sdn.py and verify/update the following variables to match your system's paths:
+
+```bash
+RYU_MANAGER_CMD (== /home/atharv/.pyenv/versions/3.9.0/envs/myenv-3.9.0/bin/ryu-manager)
+```
+    
+```bash
+PYTHON_CMD (== /home/atharv/.pyenv/versions/3.9.0/envs/myenv-3.9.0/bin/python)
+```
 
 ## Usage
 
-### Running the Complete System
+**0. Cleanup:**
 
-To run the entire AMI Smart Grid SDN system with anomaly detection:
+* Clean unnecessary docker containers/mininet process:
 
-```
-python run_ami_sdn.py
-```
-
-This will:
-
-1. Start the Ryu SDN controller with the AMI controller application
-2. Create the network topology with smart meters and houses
-3. Begin monitoring network flows for anomalies
-
-### Running Components Separately
-
-You can also run individual components:
-
-1. Start only the SDN controller:
-
-   ```
-   python run_ami_sdn.py --controller-only
-   ```
-
-2. Start only the network topology (requires controller to be running):
-
-   ```
-   python run_ami_sdn.py --topology-only
-   ```
-
-3. Only monitor logs for anomaly detection:
-   ```
-   python run_ami_sdn.py --monitor-only
-   ```
-
-### Testing the Anomaly Detection System
-
-To test the anomaly detection system independently:
-
-```
-python anomaly_detector.py
+```bash
+#clear mininet environment
+sudo mn -c
 ```
 
-This will run the anomaly detector on the test dataset and display the results.
-
-## Project Structure
-
-```
-├── ads/                        # Anomaly Detection System
-│   ├── ads.py                  # Main ADS implementation
-│   ├── dataset_ami/            # Dataset directory
-│   │   └── test.csv            # Test dataset
-│   └── saved_transformer_model.h5  # Trained model
-├── sdn_topology/               # SDN Topology
-│   ├── ami_topology.py         # Network topology implementation
-│   └── ami_controller.py       # SDN controller implementation
-├── anomaly_detector.py         # Interface between ADS and SDN
-├── run_ami_sdn.py              # Main script to run the system
-└── requirements.txt            # Project dependencies
+```bas
+# if getting docker container already running
+docker ps -a
+docker system prune -a
 ```
 
-## Anomaly Detection
+**1. Start the Simulation:**
 
-The system uses a transformer-based model to detect the following types of anomalies:
+*    Run the main orchestration script using sudo (required for Containernet/Mininet):
 
-- Normal traffic
-- Backdoor attacks
-- DDoS attacks
-- Injection attacks
-- Man-in-the-middle attacks
-- Password attacks
-- Ransomware
-- Port scanning
-- Cross-site scripting (XSS)
+```bash      
+sudo python3 run_ami_sdn.py
+```
 
-When an anomaly is detected, the SDN controller takes appropriate mitigation actions, such as blocking the malicious traffic.
+* This script will:
 
-## Extending the System
+    * Start the Ryu Controller (ami_controller.py).
 
-### Adding New Devices
+    * Start the Containernet topology (ami_topology.py).
 
-To add new devices to the topology, modify the `ami_topology.py` file and add new hosts and links as needed.
+    * Wait for flow_stats.log to be created.
 
-### Customizing Anomaly Detection
+    * Start the Anomaly Detector (anomaly_detector.py).
 
-The anomaly detection model can be retrained with custom data by modifying the `ads.py` file and running the training process.
+**2. Monitor the System:**
+
+*    Anomaly Detections: Check the output log of the anomaly detector:
+        * Open logs/anomaly_detector.log
+            (This will show Normal traffic detected or --- ANOMALY DETECTED --- messages with the predicted type and flow details.)
+            
+            OR
+            
+            ```bash
+            tail -f logs/anomaly_detector.log
+            ```
+
+* Raw Flow Data: View the raw flow statistics being logged by the controller:
+    * Open flow_stats.log
+
+        OR
+
+        ```bash
+        tail -f flow_stats.log
+        ```
+
+* Component Logs: Check individual logs in the logs/ directory for detailed information or errors from Ryu (ryu_controller.log) and Containernet (containernet_topology.log).
+
+**3. Generating Traffic and Simulating Attacks:**
+
+* You need to execute commands inside the Docker containers representing the houses (e.g., mn.h1_1, mn.h1_2, mn.h2_1, mn.h2_2). Use
+
+        sudo docker exec -it <container_name> <command>.
+
+* Install Tools in Containers (One-time per container):
+
+```bash
+      
+# Example for h1_1
+sudo docker exec -it mn.h1_1 bash
+# --- Inside the container ---
+apt-get update
+apt-get install -y iputils-ping net-tools nmap hping3 netcat dnsutils curl wget python3
+exit
+# --- End of container ---
+# Repeat for other containers as needed (e.g., mn.h1_2)
+```
+
+* Generate NORMAL traffic:
+```bash
+sudo docker exec -it mn.h1_1 ping -c 5 10.0.0.3 # Ping from h1_1 to h2_1
+sudo docker exec -it mn.h2_2 ping -c 5 10.0.0.2 # Ping from h2_2 to h1_2
+```
+
+* Port Scanning (TCP SYN Scan):
+```bash
+sudo docker exec -it mn.h1_1 nmap -Pn -sS -p 1-1024 10.0.0.3
+```
+
+* XSS:
+```bash
+sudo docker exec -it mn.h1_1 hping3 --flood --syn -p 80 10.0.0.3 #STOP THIS COMMAND AFTER 5 SECONDS
+```
+or
+```bash
+sudo ping -f 10.0.0.4
+```
+
+* PASSWORD attack (in bash):
+```bash
+sudo docker exec -it mn.h1_1 bash
+sudo hping3 --syn -p 80 --flood --rand-source 10.0.0.3
+```
+
+* DDOS (in bash):
+```bash
+sudo docker exec -it mn.h1_2 bash
+sudo hping3 --udp -p 53 --flood --rand-source -d 1000 10.0.0.3
+```
+
+**4. Stop the Simulation:**
+
+* Press Ctrl+C in the terminal where run_ami_sdn.py is running. 
 
 ## Troubleshooting
 
-### Common Issues
+* Open vSwitch: Ensure the service is running: ```sudo systemctl status openvswitch-switch.``` Start it if needed: ```sudo systemctl start openvswitch-switch.```
 
-1. **Controller Connection Failure**:
+* Permissions: Most commands involving Mininet/Containernet or modifying network state require ```sudo```.
 
-   - Ensure the Ryu controller is running before starting the topology
-   - Check if port 6653 is available and not blocked by a firewall
+* Hardcoded Paths: Double-check the ```RYU_MANAGER_CMD``` and ```PYTHON_CMD``` in ```run_ami_sdn.py```.
 
-2. **Anomaly Detection Issues**:
+* Model/Scaler Not Found: Ensure you have run ```python ads/ads.py``` successfully and the files exist in ```ads/results/```.
 
-   - Verify that the model file `saved_transformer_model.h5` exists
-   - Check the format of flow data matches the expected input format
+## Roadmap
 
-3. **Containernet Issues**:
-   - Ensure Docker is running
-   - Run with sudo if permission issues occur
+*    Integrate more sophisticated attack simulation tools (e.g., Scapy).
 
-## License
+*    Develop a web-based UI for visualization and monitoring.
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+*    Optimize the anomaly detection model and preprocessing pipeline for performance.
+
+*    Experiment with different ML models (LSTM, GRU, etc.).
+
+*    Improve flow tracking in the controller for more accurate duration and bidirectional statistics.
