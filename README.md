@@ -36,8 +36,11 @@ The system follows a layered architecture:
     *   *Near Real-Time Detection:* Monitors logs and classifies flows (`anomaly_detector.py`).
 5.  **Orchestration Layer:** Manages the startup and coordination of all components (`run_ami_sdn.py`).
 
-![image](https://github.com/user-attachments/assets/095346df-9b62-4b44-8661-7b9a3aee7bd0)
-_Fig. 1 System Architecture_  
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/095346df-9b62-4b44-8661-7b9a3aee7bd0" alt="image" />
+  <br />
+  <em>Fig. 1 System Architecture</em>
+</p>
 
 ## Technology Stack
 
