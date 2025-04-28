@@ -26,6 +26,7 @@ The project demonstrates a complete workflow from simulation setup and data acqu
 *   **Real-time Monitoring:** The `anomaly_detector.py` script monitors `flow_stats.log` for new entries, preprocesses them, and uses the trained model to predict anomalies, printing detections to its log file.
 
 ## System Architecture
+
 <br />
 <p align="center">
   <img src="https://github.com/user-attachments/assets/095346df-9b62-4b44-8661-7b9a3aee7bd0" alt="image" />
@@ -33,6 +34,7 @@ The project demonstrates a complete workflow from simulation setup and data acqu
   <em>Fig. 1 System Architecture</em>
 </p>
 <br />
+
 The system follows a layered architecture:
 1.  **Simulation Layer (Containernet):** Emulates the physical AMI network (`ami_topology.py`).
 2.  **SDN Control Layer (Ryu):** Manages switches, collects stats (`ami_controller.py`).
@@ -41,9 +43,10 @@ The system follows a layered architecture:
     *   *Offline Training:* Trains the Transformer model (`ads/ads.py`).
     *   *Near Real-Time Detection:* Monitors logs and classifies flows (`anomaly_detector.py`).
 5.  **Orchestration Layer:** Manages the startup and coordination of all components (`run_ami_sdn.py`).
+
 <br />
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/87d2f3fd-17ad-49a8-a7e2-d23bc4b4f3ee" alt="image" 
+  <img src="https://github.com/user-attachments/assets/87d2f3fd-17ad-49a8-a7e2-d23bc4b4f3ee" alt="image" />
   <br />
   <em>Fig. 2 Simulation Network Topology</em>
 </p>
@@ -220,6 +223,7 @@ sudo python3 run_ami_sdn.py
     * Wait for ```flow_stats.log``` to be created.
 
     * Start the Anomaly Detector (```anomaly_detector.py```).
+
 <br />
 <p align="center">
   <img src="https://github.com/user-attachments/assets/a1a46f8f-3ee6-4432-a743-3834f8d7d6ce" alt="image" />
@@ -248,6 +252,7 @@ sudo python3 run_ami_sdn.py
         ```bash
         tail -f flow_stats.log
         ```
+
 <br />
 <p align="center">
   <img src="https://github.com/user-attachments/assets/1ee91e9f-e038-4a98-bd7e-ff306258b686" alt="image" />
@@ -284,6 +289,14 @@ sudo docker exec -it mn.h1_1 ping -c 5 10.0.0.3 # Ping from h1_1 to h2_1
 sudo docker exec -it mn.h2_2 ping -c 5 10.0.0.2 # Ping from h2_2 to h1_2
 ```
 
+<br />
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/9c7b3143-a8da-4055-b9b5-1352788a12c2" alt="image" />
+  <br />
+  <em>Fig. 5 Detecting Normal Traffic (Ping)</em>
+</p>
+<br />
+
 * Port Scanning (TCP SYN Scan):
 ```bash
 sudo docker exec -it mn.h1_1 nmap -Pn -sS -p 1-1024 10.0.0.3
@@ -304,23 +317,20 @@ sudo docker exec -it mn.h1_1 bash
 sudo hping3 --syn -p 80 --flood --rand-source 10.0.0.3
 ```
 
-* DDOS (in bash):
-```bash
-sudo docker exec -it mn.h1_2 bash
-sudo hping3 --udp -p 53 --flood --rand-source -d 1000 10.0.0.3
-```
-<br />
-<p align="center">
-  <img src="https://github.com/user-attachments/assets/9c7b3143-a8da-4055-b9b5-1352788a12c2" alt="image" />
-  <br />
-  <em>Fig. 5 Detecting Normal Traffic (Ping)</em>
-</p>
 <br />
 <p align="center">
   <img src="https://github.com/user-attachments/assets/863e1c0b-6293-4764-be08-80f34a5648c2" alt="image" />
   <br />
   <em>Fig. 6 Detecting Password Attack Traffic</em>
 </p>
+<br />
+
+* DDOS (in bash):
+```bash
+sudo docker exec -it mn.h1_2 bash
+sudo hping3 --udp -p 53 --flood --rand-source -d 1000 10.0.0.3
+```
+
 <br />
 <p align="center">
   <img src="https://github.com/user-attachments/assets/aaf5cf38-e72a-46fd-8de7-4d9d8be7e227" alt="image" />
@@ -352,6 +362,7 @@ The Transformer-based model demonstrated strong performance in classifying netwo
 *   **False Alarm Rate (Normal Misclassified):** ~0.2727 (Area for potential improvement/tuning)
 
 Crucially, the Transformer model outperformed a baseline LSTM-Autoencoder approach on similar tasks, due to the effectiveness of its attention mechanism in capturing complex flow patterns. Detailed results, including the confusion matrix and training history plots, can be found in the `ads/results/` directory after running the training script.
+
 <br />
 <p align="center">
   <img src="https://github.com/user-attachments/assets/7a850ee0-6de6-44a9-9bbb-8ea25a3854b4" alt="image" />
