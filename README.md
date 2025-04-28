@@ -367,7 +367,7 @@ Crucially, the Transformer model outperformed a baseline LSTM-Autoencoder approa
 <p align="center">
   <img src="https://github.com/user-attachments/assets/7a850ee0-6de6-44a9-9bbb-8ea25a3854b4" alt="image" />
   <br />
-  <em>Fig. 9 Results of LSTM-Autoencoder Model</em>
+  <em>Fig. 9 Results of (previously tried) LSTM-Autoencoder Model</em>
 </p>
 <br />
 
