@@ -1,11 +1,18 @@
       
 # AMI Smart Grid SDN with Transformer-based Anomaly Detection
 
-## Description
+## Overview
 
-This project implements a Software-Defined Networking (SDN) solution tailored for Advanced Metering Infrastructure (AMI) in smart grids. It integrates a sophisticated anomaly detection system (ADS) utilizing a Transformer-based machine learning model to identify potential security threats within the network traffic.
+This project presents an integrated system for enhancing the cybersecurity posture of Advanced Metering Infrastructure (AMI) within smart grids. Traditional Intrusion Detection Systems (IDS) often struggle with the dynamic nature and specific threat landscape of AMI networks. This solution addresses these challenges by leveraging the synergy between Software-Defined Networking (SDN) for granular network visibility and control, and advanced Artificial Intelligence (AI) for intelligent threat detection.
 
-The system simulates an AMI environment using Containernet, monitors network flows using a Ryu SDN controller, logs relevant flow statistics, and employs a trained Transformer model to classify traffic in near real-time as either normal or belonging to various attack categories.
+Specifically, it utilizes:
+*   **Containernet:** To create a realistic, yet controlled, simulation of an AMI network topology with Docker containers representing consumer houses and Open vSwitch instances acting as AMI gateways.
+*   **Ryu SDN Controller:** To manage the network, enforce basic connectivity, and systematically collect detailed flow statistics (IPs, ports, protocols, byte/packet counts, duration) from the AMI gateways via OpenFlow.
+*   **Transformer-based Deep Learning Model:** A sophisticated AI model trained on the `TON_IoT` dataset (a relevant IoT/IIoT dataset) to learn complex temporal patterns and differentiate between normal AMI traffic and various malicious activities like Denial of Service (DoS), Distributed DoS (DDoS), and network scanning.
+*   **Near Real-Time Detection:** A dedicated monitoring script analyzes the collected flow statistics, preprocesses them, and uses the trained Transformer model to classify network flows, logging detections promptly.
+
+The project demonstrates a complete workflow from simulation setup and data acquisition to AI-powered analysis and threat identification, showcasing a robust and adaptable approach to AMI security.
+
 
 ## Features
 
@@ -17,6 +24,28 @@ The system simulates an AMI environment using Containernet, monitors network flo
     *   Includes preprocessing steps (scaling, encoding) consistent between training and detection.
     *   Supports multi-class classification to identify different types of anomalies (e.g., DoS, DDoS, Scanning, etc., depending on the training data labels).
 *   **Real-time Monitoring:** The `anomaly_detector.py` script monitors `flow_stats.log` for new entries, preprocesses them, and uses the trained model to predict anomalies, printing detections to its log file.
+
+## System Architecture
+
+The system follows a layered architecture:
+1.  **Simulation Layer (Containernet):** Emulates the physical AMI network (`ami_topology.py`).
+2.  **SDN Control Layer (Ryu):** Manages switches, collects stats (`ami_controller.py`).
+3.  **Data Logging Layer:** Persists flow statistics (`flow_stats.log`).
+4.  **Analysis & Detection Layer (Transformer ADS):**
+    *   *Offline Training:* Trains the Transformer model (`ads/ads.py`).
+    *   *Near Real-Time Detection:* Monitors logs and classifies flows (`anomaly_detector.py`).
+5.  **Orchestration Layer:** Manages the startup and coordination of all components (`run_ami_sdn.py`).
+
+![image](https://github.com/user-attachments/assets/095346df-9b62-4b44-8661-7b9a3aee7bd0)
+_Fig. 1 System Architecture_  
+
+## Technology Stack
+
+*   **Simulation:** Containernet, Mininet, Docker, Open vSwitch (OVS)
+*   **SDN Controller:** Ryu SDN Framework
+*   **AI/ML:** Python 3.9, TensorFlow/Keras, Scikit-learn, Pandas, NumPy
+*   **Operating System:** Linux (Ubuntu Recommended)
+
 
 ## Visuals
 
@@ -79,7 +108,7 @@ Follow these steps carefully to set up the project environment.
     sudo make install
     cd ..
     ```
-*   **Open vSwitch:** Usually installed with Mininet. Verify installation and ensure the service is running.
+*   **Open vSwitch (OVS):** Usually installed with Mininet. Verify installation and ensure the service is running.
     ```bash
     sudo ovs-vsctl --version
     sudo systemctl status openvswitch-switch  # Check status
@@ -261,6 +290,19 @@ sudo hping3 --udp -p 53 --flood --rand-source -d 1000 10.0.0.3
 
 * Press Ctrl+C in the terminal where run_ami_sdn.py is running. 
 
+## Results Highlights
+
+The Transformer-based model demonstrated strong performance in classifying network traffic within the simulated AMI environment:
+
+*   **Overall F1 Score (Weighted):** ~0.9144
+*   **Overall Precision (Weighted):** ~0.9257
+*   **Overall Recall (Weighted):** ~0.9167
+*   **AUC-ROC (One-vs-Rest):** ~0.9893 (indicating excellent class discrimination)
+*   **Average Inference Time:** ~20.52 ms per flow sample (demonstrating near real-time capability)
+*   **False Alarm Rate (Normal Misclassified):** ~0.2727 (Area for potential improvement/tuning)
+
+Crucially, the Transformer model outperformed a baseline LSTM-Autoencoder approach on similar tasks, due to the effectiveness of its attention mechanism in capturing complex flow patterns. Detailed results, including the confusion matrix and training history plots, can be found in the `ads/results/` directory after running the training script.
+
 ## Troubleshooting
 
 * Open vSwitch: Ensure the service is running: ```sudo systemctl status openvswitch-switch.``` Start it if needed: ```sudo systemctl start openvswitch-switch.```
@@ -271,14 +313,15 @@ sudo hping3 --udp -p 53 --flood --rand-source -d 1000 10.0.0.3
 
 * Model/Scaler Not Found: Ensure you have run ```python ads/ads.py``` successfully and the files exist in ```ads/results/```.
 
-## Roadmap
+## Future Enhancements
 
-*    Integrate more sophisticated attack simulation tools (e.g., Scapy).
+*   **Real-World Validation:** Test on physical AMI testbeds or using extensive real-world trace data.
+*   **IPS Integration:** Implement closed-loop mitigation by allowing the detector to trigger response actions (e.g., installing blocking rules) via the SDN controller.
+*   **Dataset Enrichment:** Augment training data with more diverse and AMI-specific datasets, potentially using synthetic data generation.
+*   **Energy Theft Detection:** Extend anomaly detection beyond network patterns to potentially identify anomalies related to energy consumption data itself.
+*   **Scalability Improvements:** Investigate distributed architectures for the controller and detection components.
+*   **UI Development:** Create a web-based dashboard for easier monitoring and visualization.
 
-*    Develop a web-based UI for visualization and monitoring.
+## Acknowledgements
 
-*    Optimize the anomaly detection model and preprocessing pipeline for performance.
-
-*    Experiment with different ML models (LSTM, GRU, etc.).
-
-*    Improve flow tracking in the controller for more accurate duration and bidirectional statistics.
+This project was developed as part of the BCSE498J Capstone Project at Vellore Institute of Technology (VIT).
